@@ -112,8 +112,12 @@
              List<ResourceLocation> list = this.byKey
                  .entrySet()
                  .stream()
-@@ -345,8 +_,10 @@
-                         throw new IllegalStateException("Some intrusive holders were not registered: " + this.unregisteredIntrusiveHolders.values());
+@@ -342,11 +_,13 @@
+             } else {
+                 if (this.unregisteredIntrusiveHolders != null) {
+                     if (!this.unregisteredIntrusiveHolders.isEmpty()) {
+-                        throw new IllegalStateException("Some intrusive holders were not registered: " + this.unregisteredIntrusiveHolders.values());
++                        throw new IllegalStateException("Some intrusive holders were not registered: " + this.unregisteredIntrusiveHolders.values().stream().map(tReference -> getIntrusiveHolderTrace(tReference.value())).toList());
                      }
  
 -                    this.unregisteredIntrusiveHolders = null;
@@ -124,6 +128,14 @@
  
                  return this;
              }
+@@ -359,6 +_,7 @@
+             throw new IllegalStateException("This registry can't create intrusive holders");
+         } else {
+             this.validateWrite();
++            this.storeIntrusiveHolderTrace(p_205915_);
+             return this.unregisteredIntrusiveHolders.computeIfAbsent(p_205915_, p_258166_ -> Holder.Reference.createIntrusive(this.asLookup(), p_258166_));
+         }
+     }
 @@ -441,5 +_,59 @@
      @Override
      public HolderLookup.RegistryLookup<T> asLookup() {
