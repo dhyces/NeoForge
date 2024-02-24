@@ -126,4 +126,15 @@ public class BlockTests {
 
                 .thenSucceed();
     }
+
+    @GameTest
+    @EmptyTemplate
+    @TestHolder(description = "")
+    static void intrusiveHolderErrorTest(final DynamicTest test, final RegistrationHelper reg) {
+        // TODO: this isn't a real test, it crashes because obviously :)
+        reg.blocks().register("test", () -> {
+            new Block(BlockBehaviour.Properties.of());
+            return new Block(BlockBehaviour.Properties.of());
+        });
+    }
 }

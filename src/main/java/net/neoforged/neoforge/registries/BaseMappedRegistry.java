@@ -28,6 +28,7 @@ public abstract class BaseMappedRegistry<T> implements Registry<T> {
     protected final List<ClearCallback<T>> clearCallbacks = new ArrayList<>();
     final Map<ResourceLocation, ResourceLocation> aliases = new HashMap<>();
     final Map<DataMapType<T, ?>, Map<ResourceKey<T>, ?>> dataMaps = new IdentityHashMap<>();
+    final Map<T, String> intrusiveHolderStackTraces = new IdentityHashMap<>();
 
     private int maxId = Integer.MAX_VALUE - 1;
     private boolean sync;
@@ -119,6 +120,14 @@ public abstract class BaseMappedRegistry<T> implements Registry<T> {
     protected abstract void registerIdMapping(ResourceKey<T> key, int id);
 
     protected abstract void unfreeze();
+
+    protected void storeIntrusiveHolderTrace(T element) {
+        intrusiveHolderStackTraces.computeIfAbsent(element, t -> StackWalker.getInstance().walk(stackFrameStream -> stackFrameStream.limit(6).toList().get(5).toString()));
+    }
+
+    protected String getIntrusiveHolderTrace(T element) {
+        return intrusiveHolderStackTraces.get(element);
+    }
 
     @Override
     public <A> @Nullable A getData(DataMapType<T, A> type, ResourceKey<T> key) {
