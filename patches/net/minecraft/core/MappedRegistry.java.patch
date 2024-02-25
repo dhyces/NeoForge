@@ -32,7 +32,11 @@
          if (this.byLocation.containsKey(p_256594_.location())) {
              Util.pauseInIde(new IllegalStateException("Adding duplicate key '" + p_256594_ + "' to registry"));
          }
-@@ -145,12 +_,14 @@
+@@ -142,15 +_,18 @@
+                 throw new AssertionError("Missing intrusive holder for " + p_256594_ + ":" + p_256374_);
+             }
+ 
++            this.removeTraceIfEnabled(p_256374_);
              reference.bindKey(p_256594_);
          } else {
              reference = this.byKey.computeIfAbsent(p_256594_, p_258168_ -> Holder.Reference.createStandAlone(this.holderOwner(), p_258168_));
@@ -112,12 +116,13 @@
              List<ResourceLocation> list = this.byKey
                  .entrySet()
                  .stream()
-@@ -342,11 +_,13 @@
+@@ -342,11 +_,14 @@
              } else {
                  if (this.unregisteredIntrusiveHolders != null) {
                      if (!this.unregisteredIntrusiveHolders.isEmpty()) {
 -                        throw new IllegalStateException("Some intrusive holders were not registered: " + this.unregisteredIntrusiveHolders.values());
-+                        throw new IllegalStateException("Some intrusive holders were not registered: " + this.unregisteredIntrusiveHolders.values().stream().map(tReference -> getIntrusiveHolderTrace(tReference.value())).toList());
++                        // Neo: Provide better error reporting for unregistered holders
++                        throw new IllegalStateException("Some intrusive holders were not registered: " + this.wrapIntrusiveHolderError(this.unregisteredIntrusiveHolders.values()));
                      }
  
 -                    this.unregisteredIntrusiveHolders = null;
@@ -132,7 +137,7 @@
              throw new IllegalStateException("This registry can't create intrusive holders");
          } else {
              this.validateWrite();
-+            this.storeIntrusiveHolderTrace(p_205915_);
++            this.storeTraceIfEnabled(p_205915_);
              return this.unregisteredIntrusiveHolders.computeIfAbsent(p_205915_, p_258166_ -> Holder.Reference.createIntrusive(this.asLookup(), p_258166_));
          }
      }

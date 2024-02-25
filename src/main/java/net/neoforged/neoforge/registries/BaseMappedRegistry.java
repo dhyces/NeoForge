@@ -6,10 +6,12 @@
 package net.neoforged.neoforge.registries;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -28,7 +30,7 @@ public abstract class BaseMappedRegistry<T> implements Registry<T> {
     protected final List<ClearCallback<T>> clearCallbacks = new ArrayList<>();
     final Map<ResourceLocation, ResourceLocation> aliases = new HashMap<>();
     final Map<DataMapType<T, ?>, Map<ResourceKey<T>, ?>> dataMaps = new IdentityHashMap<>();
-    final Map<T, String> intrusiveHolderStackTraces = new IdentityHashMap<>();
+    final Map<T, String> intrusiveHolderStackTraces = Boolean.getBoolean("neoforge.traceIntrusiveHolders") ? new IdentityHashMap<>() : null;
 
     private int maxId = Integer.MAX_VALUE - 1;
     private boolean sync;
@@ -121,12 +123,25 @@ public abstract class BaseMappedRegistry<T> implements Registry<T> {
 
     protected abstract void unfreeze();
 
-    protected void storeIntrusiveHolderTrace(T element) {
-        intrusiveHolderStackTraces.computeIfAbsent(element, t -> StackWalker.getInstance().walk(stackFrameStream -> stackFrameStream.limit(6).toList().get(5).toString()));
+    protected void removeTraceIfEnabled(T element) {
+        if (intrusiveHolderStackTraces != null) {
+            intrusiveHolderStackTraces.remove(element);
+        }
     }
 
-    protected String getIntrusiveHolderTrace(T element) {
-        return intrusiveHolderStackTraces.get(element);
+    protected void storeTraceIfEnabled(T element) {
+        if (intrusiveHolderStackTraces != null) {
+            intrusiveHolderStackTraces.computeIfAbsent(element, t -> StackWalker.getInstance().walk(stackFrameStream -> stackFrameStream.skip(5).findFirst().map(Object::toString).orElse("")));
+        }
+    }
+
+    protected List<String> wrapIntrusiveHolderError(Collection<Holder.Reference<T>> elements) {
+        if (intrusiveHolderStackTraces != null) {
+            List<String> traces = elements.stream().map(tReference -> intrusiveHolderStackTraces.get(tReference.value())).toList();
+            intrusiveHolderStackTraces.clear();
+            return traces;
+        }
+        return elements.stream().map(t -> t.value().getClass().getSimpleName()).toList();
     }
 
     @Override
