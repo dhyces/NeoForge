@@ -6,19 +6,29 @@
 package net.neoforged.neoforge.debug.client;
 
 import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.math.Axis;
 import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.entity.EntityRenderers;
+import net.minecraft.client.renderer.entity.player.PlayerRenderer;
+import net.minecraft.client.renderer.entity.state.PlayerRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.SectionPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.levelgen.SingleThreadedRandomSource;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.entity.state.RenderStateKey;
 import net.neoforged.neoforge.client.event.AddSectionGeometryEvent;
 import net.neoforged.neoforge.client.event.ClientChatEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerChangeGameTypeEvent;
 import net.neoforged.neoforge.client.event.RegisterRenderBuffersEvent;
+import net.neoforged.neoforge.client.event.RegisterRenderStateExtensionEvent;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
+import net.neoforged.neoforge.client.event.RenderPlayerEvent;
 import net.neoforged.neoforge.client.model.data.ModelData;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.testframework.DynamicTest;
@@ -102,5 +112,32 @@ public class ClientEventTests {
             Minecraft.getInstance().levelRenderer.setSectionDirty(section.x(), section.y(), section.z());
             test.requestConfirmation(player, Component.literal("Is a diamond block rendered above you?"));
         }
+    }
+
+    @TestHolder(description = { "" }, enabledByDefault = true)
+    static void updateRenderState(final DynamicTest test) {
+        var testAttachment = test.registrationHelper().attachments().registerSimpleAttachment("test", () -> 3);
+        var specialStateKey = new RenderStateKey<Float>(ResourceLocation.fromNamespaceAndPath(test.createModId(), "special_context"));
+        test.whenEnabled(listeners -> {
+            listeners.mod().addListener((RegisterRenderStateExtensionEvent event) -> {
+                event.registerExtension(PlayerRenderer.class, (player, playerRenderState) -> {
+                    playerRenderState.setExtension(specialStateKey, 42f);
+                });
+            });
+            listeners.forge().addListener((RenderPlayerEvent.Post event) -> {
+                int numRender = event.getRenderState().getData(testAttachment);
+                float xRotation = event.getRenderState().getExtensionOrThrow(specialStateKey);
+                var poseStack = event.getPoseStack();
+                poseStack.pushPose();
+                for (int i = 0; i < numRender; i++) {
+                    poseStack.translate(0, 1, 0);
+                    poseStack.pushPose();
+                    poseStack.mulPose(Axis.XP.rotation(xRotation));
+                    Minecraft.getInstance().getBlockRenderer().renderSingleBlock(Blocks.CALCITE.defaultBlockState(), poseStack, event.getMultiBufferSource(), event.getPackedLight(), OverlayTexture.NO_OVERLAY, ModelData.EMPTY, RenderType.solid());
+                    poseStack.popPose();
+                }
+                poseStack.popPose();
+            });
+        });
     }
 }
